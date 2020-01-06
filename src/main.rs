@@ -1,10 +1,12 @@
 use clap::{App, AppSettings, Arg};
+mod config;
 mod install;
 
 //static GLOBAL_FP_LIB_TABLE: &str = ".test/config/kicad/fp-lib-table";
 //static GLOBAL_SYM_LIB_TABLE: &str = ".test/config/kicad/sym-lib-table";
 
 fn main() {
+    // create the App with clap
     let matches = App::new("kibrarian")
         .version("0.1.0")
         .author("Carlo Supina <cdsupina@micronote.tech>")
@@ -44,9 +46,10 @@ fn main() {
         )
         .get_matches();
 
-    // global install
-    // install libraries to KICAD_LIBRARY_DIR
-    // update GLOBAL_FP_LIB_TABLE and SYM_LIB_TABLE
+    // print config information
+    config::load();
+
+    // handle subcommands and args
     match matches.subcommand() {
         ("install", Some(install_matches)) => {
             println!(

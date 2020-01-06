@@ -7,3 +7,5 @@ edition = "2018"
 [dependencies]
 clap = "2.33.0"
 git2 = "0.11.0"
+serde = { version = "1.0.104", features = ["serde_derive"] }
+ron = "0.5.1"
