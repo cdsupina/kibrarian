@@ -19,6 +19,6 @@ pub fn load(config_path: String) -> Config {
         }
     };
 
-    println!("Config: {:?}", &config);
+    //println!("Config: {:?}", &config);
     config
 }

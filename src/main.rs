@@ -67,7 +67,7 @@ fn main() {
         config_path = c.to_owned();
     }
 
-    println!("Config file path: {}", config_path);
+    //println!("Config file path: {}", config_path);
     let config = config::load(config_path);
 
     // handle subcommands and args
@@ -105,8 +105,7 @@ fn main() {
         }
 
         ("search", Some(search_matches)) => {
-            println!("Searching {}", search_matches.value_of("query").unwrap());
-            libraries::search(config.libraries, search_matches.value_of("query").unwrap());
+            libraries::search(config.libraries, search_matches.value_of("query").unwrap())
         }
 
         _ => unreachable!(),
