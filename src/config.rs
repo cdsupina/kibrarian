@@ -11,7 +11,29 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Config {
-        unimplemented!();
+        Config {
+            libraries: format!("{}/.kibrarian/libraries", env!("HOME")),
+            fp_lib_table: format!(
+                "{}/projects/kibrarian/test/config/kicad/fp-lib-table",
+                env!("HOME")
+            ),
+            sym_lib_table: format!(
+                "{}/projects/kibrarian/test/config/kicad/sym-lib-table",
+                env!("HOME")
+            ),
+        }
+    }
+
+    pub fn libraries(&mut self, path: &str) {
+        self.libraries = path.to_owned();
+    }
+
+    pub fn fp_lib_table(&mut self, path: &str) {
+        self.fp_lib_table = path.to_owned();
+    }
+
+    pub fn sym_lib_table(&mut self, path: &str) {
+        self.sym_lib_table = path.to_owned();
     }
 }
 
@@ -34,7 +56,6 @@ pub fn setup(config_file: Option<Config>) {
 }
 
 pub fn load(config_path: &str) -> Option<Config> {
-    // let f = File::open(&config_path).expect("Failed opening file.");
     let f: File = match File::open(config_path) {
         Ok(x) => x,
         Err(_) => {
@@ -49,6 +70,5 @@ pub fn load(config_path: &str) -> Option<Config> {
         }
     };
 
-    //println!("Config: {:?}", &config);
     config
 }
