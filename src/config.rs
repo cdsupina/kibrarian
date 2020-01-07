@@ -1,6 +1,6 @@
 use ron::de::from_reader;
 use serde::Deserialize;
-use std::{fmt, fs::File, path::Path};
+use std::{fmt, fs::File};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -19,17 +19,15 @@ impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Libraries path: {}", self.libraries)?;
         writeln!(f, "fp-lib-table: {}", self.fp_lib_table)?;
-        writeln!(f, "sym-lib-table: {}", self.sym_lib_table)
+        write!(f, "sym-lib-table: {}", self.sym_lib_table)
     }
 }
 
-pub fn setup(config_path: &str) {
+pub fn setup(config_file: Option<Config>) {
     println!("Kibrarian Setup");
 
-    // check if config.ron exists
-    if Path::new(config_path).exists() {
-        // display current config
-        println!("config.ron file found.");
+    if let Some(c) = config_file {
+        println!("config..ron file found.\n{}", c);
     } else {
         println!("config.ron file not found.");
     }

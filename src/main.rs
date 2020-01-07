@@ -1,5 +1,4 @@
 use clap::{App, AppSettings, Arg};
-use std::path::Path;
 mod config;
 mod install;
 mod libraries;
@@ -11,16 +10,6 @@ fn main() {
         .author("Carlo Supina <cdsupina@micronote.tech>")
         .about("A library manager for Kicad.")
         .setting(AppSettings::ArgRequiredElseHelp)
-        /*
-        .arg(
-            Arg::with_name("config")
-                .short("c")
-                .long("config")
-                .value_name("FILE")
-                .help("Use a custom config file")
-                .takes_value(true),
-        )
-        */
         .subcommand(
             App::new("install")
                 .about("Installs a library.")
@@ -64,25 +53,9 @@ fn main() {
         .subcommand(App::new("setup").about("Setup kibrarian configuration."))
         .get_matches();
 
-    // print config information
+    // get config.ron path
     let config_path = format!("{}/.config/kibrarian/config.ron", env!("HOME"));
 
-    /*
-    if let Some(c) = matches.value_of("config") {
-        config_path = c.to_owned();
-    }
-    */
-
-    // if config.ron does not exist at given path run prompt to run setup
-    /*
-    if !Path::new(&config_path[..]).exists() {
-        println!("No config file found. Run 'kibrarian setup' if you are a first time user.\nAlternatively specify a valid config.ron.");
-        std::process::exit(1);
-    } else {
-        //println!("Config file path: {}", config_path);
-        let config_file = config::load(config_path);
-    }
-    */
     if let Some(config_file) = config::load(&config_path[..]) {
         // handle subcommands and args
         match matches.subcommand() {
@@ -123,18 +96,16 @@ fn main() {
                 search_matches.value_of("query").unwrap(),
             ),
 
-            ("setup", Some(setup_matches)) => {
-                println!("Running setup for kibrarian.");
-                config::setup(&config_path[..]);
+            ("setup", Some(_)) => {
+                config::setup(Some(config_file));
             }
 
             _ => unreachable!(),
         }
     } else {
         match matches.subcommand() {
-            ("setup", Some(setup_matches)) => {
-                println!("Running setup for kibrarian.");
-                config::setup(&config_path[..]);
+            ("setup", Some(_)) => {
+                config::setup(None);
             }
 
             _ => println!(
