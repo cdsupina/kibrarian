@@ -9,8 +9,7 @@ pub struct Config {
     sym_lib_table: String,
 }
 
-pub fn load() {
-    let config_path = format!("{}/.config/kibrarian/config.ron", env!("HOME"));
+pub fn load(config_path: String) {
     let f = File::open(&config_path).expect("Failed opening file.");
     let config: Config = match from_reader(f) {
         Ok(x) => x,

@@ -2,9 +2,6 @@ use clap::{App, AppSettings, Arg};
 mod config;
 mod install;
 
-//static GLOBAL_FP_LIB_TABLE: &str = ".test/config/kicad/fp-lib-table";
-//static GLOBAL_SYM_LIB_TABLE: &str = ".test/config/kicad/sym-lib-table";
-
 fn main() {
     // create the App with clap
     let matches = App::new("kibrarian")
@@ -12,6 +9,14 @@ fn main() {
         .author("Carlo Supina <cdsupina@micronote.tech>")
         .about("A library manager for Kicad.")
         .setting(AppSettings::ArgRequiredElseHelp)
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("FILE")
+                .help("Use a custom config file")
+                .takes_value(true),
+        )
         .subcommand(
             App::new("install")
                 .about("Installs a library.")
@@ -47,7 +52,14 @@ fn main() {
         .get_matches();
 
     // print config information
-    config::load();
+    let mut config = format!("{}/.config/kibrarian/config.ron", env!("HOME"));
+
+    if let Some(c) = matches.value_of("config") {
+        config = c.to_owned();
+    }
+
+    println!("Value of config: {}", config);
+    config::load(config);
 
     // handle subcommands and args
     match matches.subcommand() {
