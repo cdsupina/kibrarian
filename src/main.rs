@@ -1,6 +1,7 @@
 use clap::{App, AppSettings, Arg};
 mod config;
 mod install;
+mod libraries;
 
 fn main() {
     // create the App with clap
@@ -49,17 +50,25 @@ fn main() {
                         .required(true),
                 ),
         )
+        .subcommand(
+            App::new("search").about("Search for a library.").arg(
+                Arg::with_name("query")
+                    .help("Query to search.")
+                    .index(1)
+                    .required(true),
+            ),
+        )
         .get_matches();
 
     // print config information
-    let mut config = format!("{}/.config/kibrarian/config.ron", env!("HOME"));
+    let mut config_path = format!("{}/.config/kibrarian/config.ron", env!("HOME"));
 
     if let Some(c) = matches.value_of("config") {
-        config = c.to_owned();
+        config_path = c.to_owned();
     }
 
-    println!("Value of config: {}", config);
-    config::load(config);
+    println!("Config file path: {}", config_path);
+    let config = config::load(config_path);
 
     // handle subcommands and args
     match matches.subcommand() {
@@ -93,6 +102,11 @@ fn main() {
             } else {
                 println!("uninstalling for project");
             }
+        }
+
+        ("search", Some(search_matches)) => {
+            println!("Searching {}", search_matches.value_of("query").unwrap());
+            libraries::search(config.libraries, search_matches.value_of("query").unwrap());
         }
 
         _ => unreachable!(),

@@ -4,12 +4,12 @@ use std::fs::File;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    libraries: String,
-    fp_lib_table: String,
-    sym_lib_table: String,
+    pub libraries: String,
+    pub fp_lib_table: String,
+    pub sym_lib_table: String,
 }
 
-pub fn load(config_path: String) {
+pub fn load(config_path: String) -> Config {
     let f = File::open(&config_path).expect("Failed opening file.");
     let config: Config = match from_reader(f) {
         Ok(x) => x,
@@ -20,4 +20,5 @@ pub fn load(config_path: String) {
     };
 
     println!("Config: {:?}", &config);
+    config
 }
