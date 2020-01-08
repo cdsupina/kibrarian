@@ -28,6 +28,13 @@ pub struct Library {
     url: String,
     symbols_path: String,
     footprints_path: String,
+    installation: Option<Installation>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Installation {
+    symbols_library: String,
+    footprints_library: String,
 }
 
 impl fmt::Display for Library {

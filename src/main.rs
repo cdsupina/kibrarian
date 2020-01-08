@@ -50,6 +50,7 @@ fn main() {
                     .required(true),
             ),
         )
+        .subcommand(App::new("update").about("Update libraries."))
         .subcommand(App::new("setup").about("Setup kibrarian configuration."))
         .get_matches();
 
@@ -98,6 +99,10 @@ fn main() {
 
             ("setup", Some(_)) => {
                 config::setup(Some(config_file));
+            }
+
+            ("update", Some(_)) => {
+                println!("Updating library sources");
             }
 
             _ => unreachable!(),
