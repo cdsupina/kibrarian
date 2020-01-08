@@ -5,17 +5,12 @@ use std::{collections::HashMap, fmt, fs::File};
 #[derive(Debug, Deserialize)]
 pub struct Libraries {
     official: HashMap<String, Library>,
-    user: HashMap<String, Library>,
 }
 
 impl fmt::Display for Libraries {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Official:")?;
         for (_, v) in self.official.iter() {
-            writeln!(f, "{}", v)?;
-        }
-        writeln!(f, "User:")?;
-        for (_, v) in self.user.iter() {
             writeln!(f, "{}", v)?;
         }
         write!(f, "")
