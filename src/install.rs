@@ -4,9 +4,6 @@ use std::cell::RefCell;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-static KICAD_GLOBAL_LIBS: &str = "./global_libs";
-static KICAD_PROJECT_LIBS: &str = "./projects_libs";
-
 struct State {
     progress: Option<Progress<'static>>,
     total: usize,
@@ -59,7 +56,9 @@ fn print(state: &mut State) {
     io::stdout().flush().unwrap();
 }
 
-pub fn install(global: bool, library: &str) -> Result<(), git2::Error> {
+pub fn clone(url: &str, destination: String) -> Result<(), git2::Error> {
+    println!("cloning from: {}", url);
+
     let state = RefCell::new(State {
         progress: None,
         total: 0,
@@ -90,14 +89,7 @@ pub fn install(global: bool, library: &str) -> Result<(), git2::Error> {
     RepoBuilder::new()
         .fetch_options(fo)
         .with_checkout(co)
-        .clone(
-            library,
-            Path::new(if global {
-                KICAD_GLOBAL_LIBS
-            } else {
-                KICAD_PROJECT_LIBS
-            }),
-        )?;
+        .clone(url, Path::new(&destination[..]))?;
     println!();
 
     Ok(())

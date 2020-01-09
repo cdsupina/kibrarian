@@ -71,7 +71,8 @@ fn main() {
                     println!("installing for project");
                 }
 
-                match install::install(
+                match libraries::install(
+                    config_file.libraries,
                     install_matches.is_present("global"),
                     install_matches.value_of("target").unwrap(),
                 ) {
@@ -79,7 +80,6 @@ fn main() {
                     Err(e) => println!("error: {}", e),
                 }
             }
-
             ("uninstall", Some(uninstall_matches)) => {
                 println!(
                     "Uninstalling {}",
@@ -92,10 +92,18 @@ fn main() {
                 }
             }
 
-            ("search", Some(search_matches)) => libraries::search(
-                config_file.libraries,
-                search_matches.value_of("query").unwrap(),
-            ),
+            ("search", Some(search_matches)) => {
+                let found_library = match libraries::search(
+                    config_file.libraries,
+                    search_matches.value_of("query").unwrap(),
+                ) {
+                    Some(x) => x,
+                    None => {
+                        println!("Library not found.");
+                        std::process::exit(1);
+                    }
+                };
+            }
 
             ("setup", Some(_)) => {
                 config::setup(Some(config_file));

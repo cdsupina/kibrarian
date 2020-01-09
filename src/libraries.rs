@@ -1,6 +1,21 @@
+use crate::install::clone;
 use ron::de::from_reader;
 use serde::Deserialize;
 use std::{collections::HashMap, fmt, fs::File};
+
+pub enum LibraryError {
+    LibraryNotFoundError,
+    LibraryCloneError,
+}
+
+impl fmt::Display for LibraryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LibraryError::LibraryNotFoundError => write!(f, "Library not found."),
+            LibraryError::LibraryCloneError => write!(f, "Failed to clone library."),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Libraries {
@@ -20,7 +35,7 @@ impl fmt::Display for Libraries {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Library {
     name: String,
-    url: String,
+    pub url: String,
     symbols_path: String,
     footprints_path: String,
     installation: Option<Installation>,
@@ -42,23 +57,49 @@ impl fmt::Display for Library {
     }
 }
 
-pub fn search(library_path: String, query: &str) {
+pub fn get_libraries(library_path: String) -> Result<Libraries, ron::de::Error> {
     // read libraries from file
     let f = File::open(&library_path).expect("Failed opening file.");
-    let libraries: Libraries = match from_reader(f) {
+    from_reader(f)
+}
+
+pub fn search(library_path: String, query: &str) -> Option<Library> {
+    // read libraries from file
+
+    let libraries = match get_libraries(library_path) {
         Ok(x) => x,
         Err(e) => {
-            println!("Failed to load libraries file: {}", e);
+            println!("{}", e);
             std::process::exit(1);
         }
     };
 
-    //println!("Libraries: {}", &libraries);
-
     // if the query matches the name
     if libraries.official.contains_key(query) {
         println!("{}", libraries.official[query]);
+        Some(libraries.official[query].clone())
     } else {
         println!("No libraries found with given query.");
+        None
     }
+}
+
+pub fn install(library_path: String, global: bool, query: &str) -> Result<(), LibraryError> {
+    if let Some(library) = search(library_path, query) {
+        match clone(
+            &library.url[..],
+            format!("{}/.kibrarian/extra/{}", env!("HOME"), query),
+        ) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                println!("{}", e);
+                Err(LibraryError::LibraryCloneError)
+            }
+        }
+    } else {
+        Err(LibraryError::LibraryNotFoundError)
+    }
+
+    // TODO: if global copy libraries into ./kibrarian/libraries else copy into project libraries
+    // TODO: update fp and sym tables to directory of installed library
 }
