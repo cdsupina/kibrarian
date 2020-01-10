@@ -1,5 +1,5 @@
 use crate::git::clone;
-use fs_extra::copy_items_with_progress;
+use fs_extra::dir;
 use ron::de::from_reader;
 use serde::Deserialize;
 use std::{collections::HashMap, error, ffi::OsStr, fmt, fs, io};
@@ -107,46 +107,82 @@ pub fn install(
     query: &str,
 ) -> Result<(), Box<dyn error::Error>> {
     if let Some(library) = search(library_path, query) {
-        clone(
-            &library.url[..],
-            format!("{}/.kibrarian/extra/{}", env!("HOME"), query),
-        )?;
+        let installation_path = format!("{}/.kibrarian/extra/{}", env!("HOME"), query);
+        clone(&library.url[..], installation_path.clone())?;
 
-        let library_sym_files = fs::read_dir(format!(
-            "{}/.kibrarian/extra/{}/{}/",
-            env!("HOME"),
-            query,
-            library.symbols_path
+        // copy symbol library files to symbols dir
+        let library_sym_files =
+            fs::read_dir(format!("{}/{}/", installation_path, library.symbols_path))?
+                .map(|res| res.map(|e| e.path()))
+                .collect::<Result<Vec<_>, io::Error>>()?;
+
+        let library_fp_files = fs::read_dir(format!(
+            "{}/{}/",
+            installation_path, library.footprints_path
         ))?
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, io::Error>>()?;
 
-        fs::create_dir(format!(
-            "{}/.kibrarian/libraries/symbols/{}",
-            env!("HOME"),
-            query
-        ))?;
+        if global {
+            fs::create_dir(format!(
+                "{}/.kibrarian/libraries/symbols/{}",
+                env!("HOME"),
+                query
+            ))?;
+            fs::create_dir(format!(
+                "{}/.kibrarian/libraries/footprints/{}",
+                env!("HOME"),
+                query
+            ))?;
+        } else {
+            // TODO: create path in project directory
+            unimplemented!();
+        }
 
         for p in library_sym_files.iter() {
+            let file_osstr = match p.file_name() {
+                Some(x) => x,
+                None => continue,
+            };
+
+            let filename = match file_osstr.to_str() {
+                Some(x) => x,
+                None => continue,
+            };
+
+            let mut destination = format!("{}/.kibrarian/libraries/", env!("HOME"));
+
             if p.extension() == Some(OsStr::new("lib")) || p.extension() == Some(OsStr::new("dcm"))
             {
-                let filename = match p.file_name() {
-                    Some(x) => x,
-                    None => continue,
-                };
-                fs::copy(
-                    p,
-                    format!(
-                        "{}/.kibrarian/libraries/symbols/{}/{}",
-                        env!("HOME"),
-                        query,
-                        match filename.to_str() {
-                            Some(x) => x,
-                            None => continue,
-                        },
-                    ),
-                )?;
+                destination.push_str(&format!("symbols/{}/{}", query, filename)[..]);
+            } else {
+                continue;
             }
+            println!("copying: {:?} to {}", p, destination);
+            fs::copy(p, destination)?;
+        }
+        for p in library_fp_files.iter() {
+            let file_osstr = match p.file_name() {
+                Some(x) => x,
+                None => continue,
+            };
+
+            let filename = match file_osstr.to_str() {
+                Some(x) => x,
+                None => continue,
+            };
+
+            let mut destination = format!("{}/.kibrarian/libraries/", env!("HOME"));
+
+            if p.extension() == Some(OsStr::new("pretty")) {
+                destination.push_str(&format!("footprints/{}/{}", query, filename)[..]);
+            } else {
+                continue;
+            }
+            println!("copying: {:?} to {}", p, destination);
+            let mut options = dir::CopyOptions::new();
+            options.copy_inside = true;
+            dir::copy(p, destination, &options)?;
         }
         Ok(())
     } else {
