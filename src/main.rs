@@ -54,7 +54,7 @@ fn main() {
         .subcommand(App::new("setup").about("Setup kibrarian configuration."))
         .get_matches();
 
-    // get config.ron path
+    // create config.ron path
     let config_path = format!("{}/.config/kibrarian/config.ron", env!("HOME"));
 
     if let Some(config_file) = config::load(&config_path[..]) {
@@ -62,14 +62,9 @@ fn main() {
         match matches.subcommand() {
             ("install", Some(install_matches)) => {
                 println!(
-                    "Installing {} ",
+                    "Installing {}...",
                     install_matches.value_of("target").unwrap()
                 );
-                if install_matches.is_present("global") {
-                    println!("installing globally");
-                } else {
-                    println!("installing for project");
-                }
 
                 match libraries::install(
                     config_file.libraries,
@@ -77,29 +72,28 @@ fn main() {
                     install_matches.value_of("target").unwrap(),
                 ) {
                     Ok(()) => {}
-                    Err(e) => println!("error: {}", e),
+                    Err(_) => std::process::exit(1),
                 }
             }
             ("uninstall", Some(uninstall_matches)) => {
                 println!(
-                    "Uninstalling {}",
+                    "Uninstalling {}...",
                     uninstall_matches.value_of("target").unwrap()
                 );
-                if uninstall_matches.is_present("global") {
-                    println!("uninstalling globally");
-                } else {
-                    println!("uninstalling for project");
+
+                match libraries::uninstall() {
+                    Ok(()) => {}
+                    Err(_) => std::process::exit(1),
                 }
             }
 
             ("search", Some(search_matches)) => {
-                let found_library = match libraries::search(
+                match libraries::search(
                     config_file.libraries,
                     search_matches.value_of("query").unwrap(),
                 ) {
                     Some(x) => x,
                     None => {
-                        println!("Library not found.");
                         std::process::exit(1);
                     }
                 };

@@ -1,22 +1,19 @@
 use crate::git::clone;
 use fs_extra::dir;
 use ron::de::from_reader;
-use serde::Deserialize;
+use ron::ser;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, error, ffi::OsStr, fmt, fs, io};
 
 #[derive(Debug)]
 pub enum LibraryError {
     LibraryNotFoundError,
-    LibraryCloneError,
-    LibraryCopyError,
 }
 
 impl fmt::Display for LibraryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LibraryError::LibraryNotFoundError => write!(f, "Library not found."),
-            LibraryError::LibraryCloneError => write!(f, "Failed to clone library."),
-            LibraryError::LibraryCopyError => write!(f, "Failed to copy library."),
         }
     }
 }
@@ -25,8 +22,6 @@ impl error::Error for LibraryError {
     fn description(&self) -> &str {
         match self {
             LibraryError::LibraryNotFoundError => "Library not found",
-            LibraryError::LibraryCloneError => "Failed to clone library",
-            LibraryError::LibraryCopyError => "Failed to copy library",
         }
     }
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
@@ -34,34 +29,28 @@ impl error::Error for LibraryError {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Libraries {
-    official: HashMap<String, Library>,
+    lib_map: HashMap<String, Library>,
 }
 
 impl fmt::Display for Libraries {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Official:")?;
-        for (_, v) in self.official.iter() {
+        for (_, v) in self.lib_map.iter() {
             writeln!(f, "{}", v)?;
         }
         write!(f, "")
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Library {
-    name: String,
+    pub name: String,
+    pub id: u64,
     pub url: String,
     pub symbols_path: String,
     pub footprints_path: String,
-    installation: Option<Installation>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct Installation {
-    symbols_library: String,
-    footprints_library: String,
 }
 
 impl fmt::Display for Library {
@@ -92,9 +81,9 @@ pub fn search(library_path: String, query: &str) -> Option<Library> {
     };
 
     // if the query matches the name
-    if libraries.official.contains_key(query) {
-        println!("{}", libraries.official[query]);
-        Some(libraries.official[query].clone())
+    if libraries.lib_map.contains_key(query) {
+        println!("{}", libraries.lib_map[query]);
+        Some(libraries.lib_map[query].clone())
     } else {
         println!("No libraries found with given query.");
         None
@@ -158,7 +147,6 @@ pub fn install(
             } else {
                 continue;
             }
-            println!("copying: {:?} to {}", p, destination);
             fs::copy(p, destination)?;
         }
         for p in library_fp_files.iter() {
@@ -179,13 +167,35 @@ pub fn install(
             } else {
                 continue;
             }
-            println!("copying: {:?} to {}", p, destination);
             let mut options = dir::CopyOptions::new();
             options.copy_inside = true;
             dir::copy(p, destination, &options)?;
         }
+
+        // create entry in installed.ron
+        let mut installed_libraries =
+            match get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME"))) {
+                Ok(x) => x,
+                Err(e) => {
+                    println!("{}", e);
+                    std::process::exit(1);
+                }
+            };
+
+        println!("installed: {:?}", installed_libraries);
+        println!("adding installed librarry to file...");
+        installed_libraries
+            .lib_map
+            .insert(library.name.clone(), library);
+        let serialized = ser::to_string(&installed_libraries)?;
+        println!("installed: {}", serialized);
+
         Ok(())
     } else {
         Err(Box::new(LibraryError::LibraryNotFoundError))
     }
+}
+
+pub fn uninstall() -> Result<(), Box<dyn error::Error>> {
+    unimplemented!();
 }
