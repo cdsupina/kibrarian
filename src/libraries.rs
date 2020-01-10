@@ -2,8 +2,9 @@ use crate::git::clone;
 use fs_extra::copy_items_with_progress;
 use ron::de::from_reader;
 use serde::Deserialize;
-use std::{collections::HashMap, ffi::OsStr, fmt, fs, io};
+use std::{collections::HashMap, error, ffi::OsStr, fmt, fs, io};
 
+#[derive(Debug)]
 pub enum LibraryError {
     LibraryNotFoundError,
     LibraryCloneError,
@@ -17,6 +18,19 @@ impl fmt::Display for LibraryError {
             LibraryError::LibraryCloneError => write!(f, "Failed to clone library."),
             LibraryError::LibraryCopyError => write!(f, "Failed to copy library."),
         }
+    }
+}
+
+impl error::Error for LibraryError {
+    fn description(&self) -> &str {
+        match self {
+            LibraryError::LibraryNotFoundError => "Library not found",
+            LibraryError::LibraryCloneError => "Failed to clone library",
+            LibraryError::LibraryCopyError => "Failed to copy library",
+        }
+    }
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
     }
 }
 
@@ -87,90 +101,55 @@ pub fn search(library_path: String, query: &str) -> Option<Library> {
     }
 }
 
-pub fn install(library_path: String, global: bool, query: &str) -> Result<(), LibraryError> {
+pub fn install(
+    library_path: String,
+    global: bool,
+    query: &str,
+) -> Result<(), Box<dyn error::Error>> {
     if let Some(library) = search(library_path, query) {
-        match clone(
+        clone(
             &library.url[..],
             format!("{}/.kibrarian/extra/{}", env!("HOME"), query),
-        ) {
-            Ok(()) => {
-                // TODO: if global copy libraries into ./kibrarian/libraries else copy into project libraries and add installation to libraries.ron
-                // TODO: update fp and sym tables to directory of installed library
+        )?;
 
-                let library_map = match fs::read_dir(format!(
-                    "{}/.kibrarian/extra/{}/{}/",
-                    env!("HOME"),
-                    query,
-                    library.symbols_path
-                )) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        println!("{}", e);
-                        std::process::exit(1);
-                    }
-                }
-                .map(|res| res.map(|e| e.path()));
+        let library_sym_files = fs::read_dir(format!(
+            "{}/.kibrarian/extra/{}/{}/",
+            env!("HOME"),
+            query,
+            library.symbols_path
+        ))?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()?;
 
-                let library_sym_files = match library_map.collect::<Result<Vec<_>, io::Error>>() {
-                    Ok(x) => x,
-                    Err(e) => {
-                        println!("{}", e);
-                        std::process::exit(1);
-                    }
+        fs::create_dir(format!(
+            "{}/.kibrarian/libraries/symbols/{}",
+            env!("HOME"),
+            query
+        ))?;
+
+        for p in library_sym_files.iter() {
+            if p.extension() == Some(OsStr::new("lib")) || p.extension() == Some(OsStr::new("dcm"))
+            {
+                let filename = match p.file_name() {
+                    Some(x) => x,
+                    None => continue,
                 };
-
-                // crate directory for package's libraries
-
-                match fs::create_dir(format!(
-                    "{}/.kibrarian/libraries/symbols/{}",
-                    env!("HOME"),
-                    query
-                )) {
-                    Ok(x) => println!("create library directory: {:?}", x),
-                    Err(e) => println!("error: {}", e),
-                };
-
-                for p in library_sym_files.iter() {
-                    if p.extension() == Some(OsStr::new("lib"))
-                        || p.extension() == Some(OsStr::new("dcm"))
-                    {
-                        let filename = match p.file_name() {
+                fs::copy(
+                    p,
+                    format!(
+                        "{}/.kibrarian/libraries/symbols/{}/{}",
+                        env!("HOME"),
+                        query,
+                        match filename.to_str() {
                             Some(x) => x,
                             None => continue,
-                        };
-                        match fs::copy(
-                            p,
-                            format!(
-                                "{}/.kibrarian/libraries/symbols/{}/{}",
-                                env!("HOME"),
-                                query,
-                                match filename.to_str() {
-                                    Some(x) => x,
-                                    None => continue,
-                                },
-                            ),
-                        ) {
-                            Ok(x) => {
-                                println!("copied: {}", x);
-                                x
-                            }
-
-                            Err(e) => {
-                                println!("{}", e);
-                                std::process::exit(1)
-                            }
-                        };
-                    }
-                }
-
-                Ok(())
-            }
-            Err(e) => {
-                println!("{}", e);
-                Err(LibraryError::LibraryCloneError)
+                        },
+                    ),
+                )?;
             }
         }
+        Ok(())
     } else {
-        Err(LibraryError::LibraryNotFoundError)
+        Err(Box::new(LibraryError::LibraryNotFoundError))
     }
 }
