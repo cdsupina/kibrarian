@@ -1,6 +1,6 @@
 use clap::{App, AppSettings, Arg};
 mod config;
-mod install;
+mod git;
 mod libraries;
 
 fn main() {
