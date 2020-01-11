@@ -67,12 +67,14 @@ fn main() {
                 );
 
                 match libraries::install(
-                    config_file.libraries,
+                    config_file,
                     install_matches.is_present("global"),
                     install_matches.value_of("target").unwrap(),
                 ) {
                     Ok(()) => {}
-                    Err(_) => std::process::exit(1),
+                    Err(e) => {
+                        println!("{}", e);
+                    }
                 }
             }
             ("uninstall", Some(uninstall_matches)) => {

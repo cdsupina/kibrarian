@@ -5,6 +5,7 @@ use std::{fmt, fs::File};
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub libraries: String,
+    pub installed: String,
     pub fp_lib_table: String,
     pub sym_lib_table: String,
 }
@@ -12,7 +13,8 @@ pub struct Config {
 impl Config {
     pub fn new() -> Config {
         Config {
-            libraries: format!("{}/.kibrarian/libraries", env!("HOME")),
+            libraries: format!("{}/.config/kibrarian/libraries.ron", env!("HOME")),
+            installed: format!("{}/.config/kibrarian/installed.ron", env!("HOME")),
             fp_lib_table: format!(
                 "{}/projects/kibrarian/test/config/kicad/fp-lib-table",
                 env!("HOME")
@@ -22,18 +24,6 @@ impl Config {
                 env!("HOME")
             ),
         }
-    }
-
-    pub fn libraries(&mut self, path: &str) {
-        self.libraries = path.to_owned();
-    }
-
-    pub fn fp_lib_table(&mut self, path: &str) {
-        self.fp_lib_table = path.to_owned();
-    }
-
-    pub fn sym_lib_table(&mut self, path: &str) {
-        self.sym_lib_table = path.to_owned();
     }
 }
 

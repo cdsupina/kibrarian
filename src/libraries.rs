@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::git::clone;
 use fs_extra::dir;
 use ron::de::from_reader;
@@ -9,12 +10,14 @@ use std::{collections::HashMap, error, ffi::OsStr, fmt, fs, io};
 #[derive(Debug)]
 pub enum LibraryError {
     LibraryNotFoundError,
+    LibraryInstalledError,
 }
 
 impl fmt::Display for LibraryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LibraryError::LibraryNotFoundError => write!(f, "Library not found."),
+            LibraryError::LibraryInstalledError => write!(f, "Library already installed."),
         }
     }
 }
@@ -23,6 +26,7 @@ impl error::Error for LibraryError {
     fn description(&self) -> &str {
         match self {
             LibraryError::LibraryNotFoundError => "Library not found",
+            LibraryError::LibraryInstalledError => "Library already installed.",
         }
     }
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
@@ -91,12 +95,23 @@ pub fn search(library_path: String, query: &str) -> Option<Library> {
     }
 }
 
-pub fn install(
-    library_path: String,
-    global: bool,
-    query: &str,
-) -> Result<(), Box<dyn error::Error>> {
-    if let Some(library) = search(library_path, query) {
+pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn error::Error>> {
+    if let Some(library) = search(config.libraries, query) {
+        // check if already installed
+
+        let mut installed_libraries =
+            match get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME"))) {
+                Ok(x) => x,
+                Err(e) => {
+                    println!("{}", e);
+                    std::process::exit(1);
+                }
+            };
+
+        if installed_libraries.lib_map.contains_key(&library.name[..]) {
+            return Err(Box::new(LibraryError::LibraryInstalledError));
+        }
+
         let installation_path = format!("{}/.kibrarian/extra/{}", env!("HOME"), query);
         clone(&library.url[..], installation_path.clone())?;
 
@@ -174,6 +189,7 @@ pub fn install(
         }
 
         // create entry in installed.ron
+        /*
         let mut installed_libraries =
             match get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME"))) {
                 Ok(x) => x,
@@ -182,6 +198,7 @@ pub fn install(
                     std::process::exit(1);
                 }
             };
+        */
 
         println!("adding installed library to installed.ron...");
         installed_libraries
