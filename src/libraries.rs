@@ -100,24 +100,26 @@ pub fn search(library_path: String, query: &str) -> Option<Library> {
 
 pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn error::Error>> {
     if let Some(library) = search(config.libraries, query) {
-        // check if already installed
-
+        // load installed libraries
         let mut installed_libraries =
             get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))?;
 
+        // check if already installed
         if installed_libraries.lib_map.contains_key(&library.name[..]) {
             return Err(Box::new(LibraryError::LibraryInstalledError));
         }
 
+        // clone repository
         let installation_path = format!("{}/.kibrarian/extra/{}", env!("HOME"), query);
         clone(&library.url[..], installation_path.clone())?;
 
-        // copy symbol library files to symbols dir
+        // get vector of symbol library files
         let library_sym_files =
             fs::read_dir(format!("{}/{}/", installation_path, library.symbols_path))?
                 .map(|res| res.map(|e| e.path()))
                 .collect::<Result<Vec<_>, io::Error>>()?;
 
+        // get vector of footprint library files
         let library_fp_files = fs::read_dir(format!(
             "{}/{}/",
             installation_path, library.footprints_path
@@ -126,6 +128,7 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
         .collect::<Result<Vec<_>, io::Error>>()?;
 
         if global {
+            // create library directory in global location
             fs::create_dir(format!(
                 "{}/.kibrarian/libraries/symbols/{}",
                 env!("HOME"),
@@ -137,11 +140,12 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
                 query
             ))?;
         } else {
-            // TODO: create path in project directory
+            // TODO: create library directory in project
             unimplemented!();
         }
 
         for p in library_sym_files.iter() {
+            // copy lib and dcm files to symbols library directory
             let file_osstr = match p.file_name() {
                 Some(x) => x,
                 None => continue,
@@ -152,7 +156,11 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
                 None => continue,
             };
 
-            let mut destination = format!("{}/.kibrarian/libraries/", env!("HOME"));
+            let mut destination = if global {
+                format!("{}/.kibrarian/libraries/", env!("HOME"))
+            } else {
+                "./libraries/".to_owned()
+            };
 
             if p.extension() == Some(OsStr::new("lib")) || p.extension() == Some(OsStr::new("dcm"))
             {
@@ -160,9 +168,12 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
             } else {
                 continue;
             }
+
             fs::copy(p, destination)?;
         }
+
         for p in library_fp_files.iter() {
+            // copy pretty directories to library directory
             let file_osstr = match p.file_name() {
                 Some(x) => x,
                 None => continue,
@@ -173,13 +184,18 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
                 None => continue,
             };
 
-            let mut destination = format!("{}/.kibrarian/libraries/", env!("HOME"));
+            let mut destination = if global {
+                format!("{}/.kibrarian/libraries/", env!("HOME"))
+            } else {
+                "./libraries/".to_owned()
+            };
 
             if p.extension() == Some(OsStr::new("pretty")) {
                 destination.push_str(&format!("footprints/{}/{}", query, filename)[..]);
             } else {
                 continue;
             }
+
             let mut options = dir::CopyOptions::new();
             options.copy_inside = true;
             dir::copy(p, destination, &options)?;
@@ -198,9 +214,7 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
             .open(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))
             .unwrap();
 
-        if let Err(e) = installed_file.write(serialized.as_bytes()) {
-            println!("{}", e);
-        }
+        let _ = installed_file.write(serialized.as_bytes())?;
 
         Ok(())
     } else {
@@ -210,13 +224,12 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
 
 pub fn uninstall(config: Config, global: bool, query: &str) -> Result<(), Box<dyn error::Error>> {
     // check if query is in installed.ron
-
     if let Some(library) = search(config.libraries, query) {
         let mut installed_libraries =
             get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))?;
 
         if !installed_libraries.lib_map.contains_key(&library.name[..]) {
-            return Err(Box::new(LibraryError::LibraryInstalledError));
+            return Err(Box::new(LibraryError::LibraryNotInstalledError));
         }
 
         // remove directories in .kibrarian/extra and .kibrarian/libaries
