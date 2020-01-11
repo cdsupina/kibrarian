@@ -128,7 +128,7 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
         .collect::<Result<Vec<_>, io::Error>>()?;
 
         if global {
-            // create library directory in global location
+            // create library directories in global location
             fs::create_dir(format!(
                 "{}/.kibrarian/libraries/symbols/{}",
                 env!("HOME"),
@@ -245,7 +245,7 @@ pub fn uninstall(config: Config, global: bool, query: &str) -> Result<(), Box<dy
             query
         ))?;
 
-        // change installed map and write to installed.ron
+        // remove installed library from installed map and write to installed.ron
         installed_libraries.lib_map.remove(query).unwrap();
         let serialized = ser::to_string(&installed_libraries)?;
         let mut installed_file = fs::OpenOptions::new()
@@ -255,9 +255,7 @@ pub fn uninstall(config: Config, global: bool, query: &str) -> Result<(), Box<dy
             .open(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))
             .unwrap();
 
-        if let Err(e) = installed_file.write(serialized.as_bytes()) {
-            println!("{}", e);
-        }
+        let _ = installed_file.write(serialized.as_bytes())?;
 
         Ok(())
     } else {
