@@ -72,9 +72,7 @@ fn main() {
                     install_matches.value_of("target").unwrap(),
                 ) {
                     Ok(()) => {}
-                    Err(e) => {
-                        println!("{}", e);
-                    }
+                    Err(e) => println!("{}", e),
                 }
             }
             ("uninstall", Some(uninstall_matches)) => {
@@ -89,9 +87,7 @@ fn main() {
                     uninstall_matches.value_of("target").unwrap(),
                 ) {
                     Ok(()) => {}
-                    Err(e) => {
-                        println!("{}", e);
-                    }
+                    Err(e) => println!("{}", e),
                 }
             }
 
@@ -107,9 +103,10 @@ fn main() {
                 };
             }
 
-            ("setup", Some(_)) => {
-                config::setup(Some(config_file));
-            }
+            ("setup", Some(_)) => match config::setup(Some(config_file)) {
+                Ok(()) => {}
+                Err(e) => println!("{}", e),
+            },
 
             ("update", Some(_)) => {
                 println!("Updating library sources");
@@ -119,9 +116,10 @@ fn main() {
         }
     } else {
         match matches.subcommand() {
-            ("setup", Some(_)) => {
-                config::setup(None);
-            }
+            ("setup", Some(_)) => match config::setup(None) {
+                Ok(()) => {}
+                Err(e) => println!("{}", e),
+            },
 
             _ => println!(
                 "No config file found. Run 'kibrarian setup' if you are a first time user."

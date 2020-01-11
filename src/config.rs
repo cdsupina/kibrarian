@@ -2,7 +2,7 @@ use ron::de::from_reader;
 use ron::ser;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::{fmt, fs, fs::File, io};
+use std::{error, fmt, fs, fs::File, io};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -124,7 +124,7 @@ impl fmt::Display for Config {
     }
 }
 
-pub fn setup(config_file: Option<Config>) {
+pub fn setup(config_file: Option<Config>) -> Result<(), Box<dyn error::Error>> {
     println!("Kibrarian Setup");
 
     if let Some(c) = config_file {
@@ -133,8 +133,9 @@ pub fn setup(config_file: Option<Config>) {
         println!("config.ron file not found.");
         let mut new_config = Config::new();
         new_config.wizard();
+
         // write to file
-        let serialized = ser::to_string(&new_config).unwrap();
+        let serialized = ser::to_string(&new_config)?;
 
         let mut new_config_file = fs::OpenOptions::new()
             .create(true)
@@ -143,8 +144,9 @@ pub fn setup(config_file: Option<Config>) {
             .open(format!("{}/.config/kibrarian/config.ron", env!("HOME")))
             .unwrap();
 
-        let _ = new_config_file.write(serialized.as_bytes()).unwrap();
+        let _ = new_config_file.write(serialized.as_bytes())?;
     }
+    Ok(())
 }
 
 pub fn load(config_path: &str) -> Option<Config> {
