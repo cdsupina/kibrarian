@@ -83,9 +83,15 @@ fn main() {
                     uninstall_matches.value_of("target").unwrap()
                 );
 
-                match libraries::uninstall() {
+                match libraries::uninstall(
+                    config_file,
+                    uninstall_matches.is_present("global"),
+                    uninstall_matches.value_of("target").unwrap(),
+                ) {
                     Ok(()) => {}
-                    Err(_) => std::process::exit(1),
+                    Err(e) => {
+                        println!("{}", e);
+                    }
                 }
             }
 

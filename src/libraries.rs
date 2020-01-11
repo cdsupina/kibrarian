@@ -188,19 +188,7 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
             dir::copy(p, destination, &options)?;
         }
 
-        // create entry in installed.ron
-        /*
-        let mut installed_libraries =
-            match get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME"))) {
-                Ok(x) => x,
-                Err(e) => {
-                    println!("{}", e);
-                    std::process::exit(1);
-                }
-            };
-        */
-
-        println!("adding installed library to installed.ron...");
+        println!("Adding installed library to installed.ron...");
         installed_libraries
             .lib_map
             .insert(library.name.clone(), library);
@@ -222,6 +210,6 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
     }
 }
 
-pub fn uninstall() -> Result<(), Box<dyn error::Error>> {
+pub fn uninstall(config: Config, global: bool, query: &str) -> Result<(), Box<dyn error::Error>> {
     unimplemented!();
 }
