@@ -3,6 +3,7 @@ use fs_extra::dir;
 use ron::de::from_reader;
 use ron::ser;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::{collections::HashMap, error, ffi::OsStr, fmt, fs, io};
 
 #[derive(Debug)]
@@ -182,13 +183,21 @@ pub fn install(
                 }
             };
 
-        println!("installed: {:?}", installed_libraries);
-        println!("adding installed librarry to file...");
+        println!("adding installed library to installed.ron...");
         installed_libraries
             .lib_map
             .insert(library.name.clone(), library);
         let serialized = ser::to_string(&installed_libraries)?;
-        println!("installed: {}", serialized);
+
+        let mut installed_file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))
+            .unwrap();
+
+        if let Err(e) = installed_file.write(serialized.as_bytes()) {
+            println!("{}", e);
+        }
 
         Ok(())
     } else {
