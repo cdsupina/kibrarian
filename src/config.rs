@@ -1,8 +1,10 @@
 use ron::de::from_reader;
-use serde::Deserialize;
-use std::{fmt, fs::File, io};
+use ron::ser;
+use serde::{Deserialize, Serialize};
+use std::io::Write;
+use std::{fmt, fs, fs::File, io};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub libraries: String,
     pub installed: String,
@@ -130,7 +132,18 @@ pub fn setup(config_file: Option<Config>) {
     } else {
         println!("config.ron file not found.");
         let mut new_config = Config::new();
-        new_config.wizard()
+        new_config.wizard();
+        // write to file
+        let serialized = ser::to_string(&new_config).unwrap();
+
+        let mut new_config_file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(format!("{}/.config/kibrarian/config.ron", env!("HOME")))
+            .unwrap();
+
+        let _ = new_config_file.write(serialized.as_bytes()).unwrap();
     }
 }
 
