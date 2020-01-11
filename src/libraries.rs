@@ -11,6 +11,7 @@ use std::{collections::HashMap, error, ffi::OsStr, fmt, fs, io};
 pub enum LibraryError {
     LibraryNotFoundError,
     LibraryInstalledError,
+    LibraryNotInstalledError,
 }
 
 impl fmt::Display for LibraryError {
@@ -18,6 +19,7 @@ impl fmt::Display for LibraryError {
         match self {
             LibraryError::LibraryNotFoundError => write!(f, "Library not found."),
             LibraryError::LibraryInstalledError => write!(f, "Library already installed."),
+            LibraryError::LibraryNotInstalledError => write!(f, "Library is not installed."),
         }
     }
 }
@@ -27,6 +29,7 @@ impl error::Error for LibraryError {
         match self {
             LibraryError::LibraryNotFoundError => "Library not found",
             LibraryError::LibraryInstalledError => "Library already installed.",
+            LibraryError::LibraryNotInstalledError => "Library is not installed.",
         }
     }
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
@@ -100,13 +103,7 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
         // check if already installed
 
         let mut installed_libraries =
-            match get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME"))) {
-                Ok(x) => x,
-                Err(e) => {
-                    println!("{}", e);
-                    std::process::exit(1);
-                }
-            };
+            get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))?;
 
         if installed_libraries.lib_map.contains_key(&library.name[..]) {
             return Err(Box::new(LibraryError::LibraryInstalledError));
@@ -197,6 +194,7 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
         let mut installed_file = fs::OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(true)
             .open(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))
             .unwrap();
 
@@ -211,5 +209,45 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
 }
 
 pub fn uninstall(config: Config, global: bool, query: &str) -> Result<(), Box<dyn error::Error>> {
-    unimplemented!();
+    // check if query is in installed.ron
+
+    if let Some(library) = search(config.libraries, query) {
+        let mut installed_libraries =
+            get_libraries(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))?;
+
+        if !installed_libraries.lib_map.contains_key(&library.name[..]) {
+            return Err(Box::new(LibraryError::LibraryInstalledError));
+        }
+
+        // remove directories in .kibrarian/extra and .kibrarian/libaries
+        fs::remove_dir_all(format!("{}/.kibrarian/extra/{}", env!("HOME"), query))?;
+        fs::remove_dir_all(format!(
+            "{}/.kibrarian/libraries/symbols/{}",
+            env!("HOME"),
+            query
+        ))?;
+        fs::remove_dir_all(format!(
+            "{}/.kibrarian/libraries/footprints/{}",
+            env!("HOME"),
+            query
+        ))?;
+
+        // change installed map and write to installed.ron
+        installed_libraries.lib_map.remove(query).unwrap();
+        let serialized = ser::to_string(&installed_libraries)?;
+        let mut installed_file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(format!("{}/.config/kibrarian/installed.ron", env!("HOME")))
+            .unwrap();
+
+        if let Err(e) = installed_file.write(serialized.as_bytes()) {
+            println!("{}", e);
+        }
+
+        Ok(())
+    } else {
+        Err(Box::new(LibraryError::LibraryNotFoundError))
+    }
 }
