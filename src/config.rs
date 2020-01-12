@@ -1,8 +1,10 @@
+use crate::git::clone;
+use crate::libraries::Libraries;
 use ron::de::from_reader;
 use ron::ser;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::{error, fmt, fs, fs::File, io};
+use std::{collections::HashMap, error, fmt, fs, fs::File, io};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -15,7 +17,7 @@ pub struct Config {
 impl Config {
     pub fn new() -> Config {
         Config {
-            libraries: format!("{}/.config/kibrarian/libraries.ron", env!("HOME")),
+            libraries: format!("{}/.config/kibrarian/sources/libraries.ron", env!("HOME")),
             installed: format!("{}/.config/kibrarian/installed.ron", env!("HOME")),
             fp_lib_table: format!(
                 "{}/projects/kibrarian/test/config/kicad/fp-lib-table",
@@ -50,7 +52,7 @@ impl Config {
         // libraries.ron
         println!("libraries.ron Path:");
         println!(
-            "Press ENTER to use default: '{}/.config/kibrarian/libraries.ron' or enter a custom path.",
+            "Press ENTER to use default: '{}/.config/kibrarian/sources/libraries.ron' or enter a custom path.",
             env!("HOME")
         );
         let mut libraries_path = String::new();
@@ -127,6 +129,7 @@ impl fmt::Display for Config {
 pub fn setup(config_file: Option<Config>) -> Result<(), Box<dyn error::Error>> {
     println!("Kibrarian Setup");
 
+    // create config file
     if let Some(c) = config_file {
         println!("config.ron file found.\n{}", c);
     } else {
@@ -141,11 +144,30 @@ pub fn setup(config_file: Option<Config>) -> Result<(), Box<dyn error::Error>> {
             .create(true)
             .write(true)
             .truncate(true)
-            .open(format!("{}/.config/kibrarian/config.ron", env!("HOME")))
-            .unwrap();
+            .open(format!("{}/.config/kibrarian/config.ron", env!("HOME")))?;
 
         let _ = new_config_file.write(serialized.as_bytes())?;
+
+        // initialize installed.ron file
+        println!("Initializing installed.ron...");
+        let new_installed = Libraries::new();
+        let serialized = ser::to_string(&new_installed)?;
+        let mut new_installed_file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(new_config.installed)?;
+
+        let _ = new_installed_file.write(serialized.as_bytes())?;
+
+        // clone libraries.ron
+        println!("Cloning libraries.ron");
+        clone(
+            "https://github.com/cdsupina/kibrarian-libraries.git",
+            format!("{}/.config/kibrarian/sources", env!("HOME")),
+        )?;
     }
+
     Ok(())
 }
 

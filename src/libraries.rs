@@ -42,6 +42,14 @@ pub struct Libraries {
     lib_map: HashMap<String, Library>,
 }
 
+impl Libraries {
+    pub fn new() -> Libraries {
+        Libraries {
+            lib_map: HashMap::new(),
+        }
+    }
+}
+
 impl fmt::Display for Libraries {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Official:")?;
@@ -79,7 +87,6 @@ pub fn get_libraries(library_path: String) -> Result<Libraries, ron::de::Error> 
 
 pub fn search(library_path: String, query: &str) -> Option<Library> {
     // read libraries from file
-
     let libraries = match get_libraries(library_path) {
         Ok(x) => x,
         Err(e) => {
@@ -170,6 +177,8 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
             }
 
             fs::copy(p, destination)?;
+
+            // TODO: Add entry to sym-lib-table
         }
 
         for p in library_fp_files.iter() {
@@ -199,6 +208,16 @@ pub fn install(config: Config, global: bool, query: &str) -> Result<(), Box<dyn 
             let mut options = dir::CopyOptions::new();
             options.copy_inside = true;
             dir::copy(p, destination, &options)?;
+
+            // TODO: Add entry to fp-lib-table
+            /*
+            let mut fp_lib_table_file = fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(config.fp_lib_table.clone())?;
+
+            let _ = fp_lib_table_file.write(b"(test)")?;
+            */
         }
 
         println!("Adding installed library to installed.ron...");
